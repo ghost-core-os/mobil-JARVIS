@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JARVIS MOBILE</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;700&display=swap');
+        
+        :root { --blue: #00e5ff; --red: #ff3c3c; --bg: #00080c; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg); color: var(--blue); font-family: 'Exo 2', sans-serif; 
+            margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+        }
+
+        /* Mobil Kamera Tarayıcı */
+        #auth-screen {
+            position: fixed; inset: 0; z-index: 100; background: var(--bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: 0.8s ease-in-out;
+        }
+
+        .cam-frame {
+            width: 250px; height: 250px; border: 2px solid var(--blue); border-radius: 40px;
+            overflow: hidden; position: relative; box-shadow: 0 0 30px rgba(0,229,255,0.2);
+        }
+        video { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Ana HUD (Dikey Düzen) */
+        #mobile-hud {
+            flex: 1; display: flex; flex-direction: column; padding: 20px;
+            opacity: 0; transform: translateY(50px); transition: 0.8s;
+        }
+
+        /* Üst Bilgi Paneli */
+        .top-stats { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--blue); padding-bottom: 5px; }
+
+        /* Mobil Core */
+        .core-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .mobile-arc {
+            width: 180px; height: 180px; border: 3px solid var(--blue); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; box-shadow: 0 0 40px rgba(0,229,255,0.3);
+        }
+        .pulse-ring { position: absolute; inset: -10px; border: 1px solid var(--blue); border-radius: 50%; animation: pulse 2s infinite; }
+
+        #response-box { 
+            font-size: 20px; text-align: center; margin-top: 30px; 
+            font-weight: 200; height: 80px; text-shadow: 0 0 10px var(--blue);
+        }
+
+        /* Alt Kontroller */
+        .bottom-nav { height: 100px; border-top: 1px solid rgba(0,229,255,0.2); display: flex; align-items: center; justify-content: center; }
+        .mic-btn {
+            width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--blue);
+            display: flex; align-items: center; justify-content: center; background: rgba(0,229,255,0.1);
+        }
+
+        @keyframes pulse { 0% { transform: scale(0.9); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
+        
+        .active-hud { opacity: 1 !important; transform: translateY(0) !important; }
+        .hide-auth { transform: scale(0) !important; opacity: 0 !important; }
+    </style>
+</head>
+<body>
+
+<div id="auth-screen">
+    <div class="cam-frame">
+        <video id="vid" autoplay playsinline></video>
+        <div style="position:absolute; top:0; width:100%; height:2px; background:var(--blue); box-shadow:0 0 15px var(--blue); animation:scan 2s linear infinite"></div>
+    </div>
+    <p style="margin-top:20px; letter-spacing:3px; font-size:12px;">MOBİL BİYOMETRİK TARAMA...</p>
+    <button onclick="startMobile()" style="background:var(--blue); border:none; padding:10px 30px; font-family:'Exo 2'; font-weight:bold; margin-top:20px;">SİSTEMİ UYANDIR</button>
+</div>
+
+<div id="mobile-hud">
+    <div class="top-stats">
+        <span>BATTERY: 88%</span>
+        <span id="m-clock">00:00</span>
+        <span>SIGNAL: OPTIMAL</span>
+    </div>
+
+    <div class="core-center">
+        <div class="mobile-arc">
+            <div class="pulse-ring"></div>
+            <div style="font-weight:bold; letter-spacing:2px; font-size:12px;">JARVIS</div>
+        </div>
+        <div id="response-box">MOBİL ERİŞİM ONAYLANDI</div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="mic-btn" id="mic-ui">
+            <div style="width:10px; height:10px; background:var(--blue); border-radius:50%"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const vid = document.getElementById('vid');
+    let recognition;
+    let speaking = false;
+
+    // Mobil Saat
+    setInterval(() => {
+        const d = new Date();
+        document.getElementById('m-clock').innerText = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
+    }, 1000);
+
+    async function startMobile() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+            vid.srcObject = stream;
+            say("Mobil biyometrik protokol başlatıldı. Kimlik doğrulanıyor.");
+            
+            setTimeout(() => {
+                document.getElementById('auth-screen').classList.add('hide-auth');
+                document.getElementById('mobile-hud').classList.add('active-hud');
+                say("Hoş geldin Ahmet Arif efendim. Mobil terminaliniz artık emrinizde.");
+                initJarvis();
+            }, 3000);
+        } catch(e) { alert("Kamera izni gerekli Ahmet Arif efendim."); }
+    }
+
+    function say(txt) {
+        speaking = true;
+        document.getElementById('response-box').innerText = txt;
+        const m = new SpeechSynthesisUtterance(txt);
+        m.lang = 'tr-TR'; m.pitch = 0.9;
+        m.onend = () => { speaking = false; listen(); };
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(m);
+    }
+
+    function initJarvis() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SR();
+        recognition.lang = 'tr-TR';
+        recognition.onresult = (e) => {
+            const cmd = e.results[e.results.length - 1][0].transcript.toLowerCase();
+            handle(cmd);
+        };
+        recognition.onend = () => { if(!speaking) listen(); };
+        listen();
+    }
+
+    function listen() { 
+        if(!speaking) {
+            try { recognition.start(); document.getElementById('mic-ui').style.background = "rgba(0,229,255,0.3)"; } catch(e) {}
+        }
+    }
+
+    function handle(cmd) {
+        if(cmd.includes("nasılsın")) {
+            say("Mobil işlemcilerim Ahmet Arif efendi için en yüksek performansta çalışıyor.");
+        } 
+        else if(cmd.includes("neredeyim")) {
+            say("Diyarbakır merkezli mobil ağ üzerinden erişim sağlıyorsunuz.");
+        }
+        else if(cmd.includes("alarm")) {
+            document.body.style.setProperty("--blue", "var(--red)");
+            say("Mobil cihaz güvenlik protokolü seviye 5'e yükseltildi.");
+        }
+        else if(cmd.includes("araştır")) {
+            let q = cmd.replace("araştır", "");
+            say(q + " araştırılıyor.");
+            window.open("https://www.google.com/search?q=" + q, "_blank");
+        }
+        else {
+            document.getElementById('mic-ui').style.background = "transparent";
+        }
+    }
+
+    @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+</script>
+</body>
+</html>
